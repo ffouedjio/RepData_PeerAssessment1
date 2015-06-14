@@ -1,0 +1,91 @@
+---
+Reproducible Research: Peer Assessment 1
+author: "FFouedjio"
+date: "June, 2015"
+---
+###About
+The github repo with RMarkdown source code: https://github.com/ffouedjio/RepData_PeerAssessment1
+
+## Loading and preprocessing the data
+
+```{r}
+if(!file.exists("RepData_PeerAssessment1")){dir.create("RepData_PeerAssessment1")}
+setwd("./RepData_PeerAssessment1/")
+FileUrl<- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+download.file(FileUrl,destfile = "./activity.zip",method = "libcurl")
+unzip("activity.zip")
+data=read.csv("activity.csv",na.strings = "NA")
+str(data)
+data$date<-as.Date(data$date)
+```
+
+
+## What is mean total number of steps taken per day?
+
+```{r} 
+NumSteDay <- aggregate(steps ~ date, data, sum)
+hist(NumSteDay$steps, main = "Daily Total Number of Steps", col="blue", xlab="Number of Steps")
+Mean_NumSteDay<- mean(NumSteDay$steps)
+Median_NumSteDay <- median(NumSteDay$steps)
+```
+
+The `mean` is `r Mean_NumSteDay` and the `median` is `r Median_NumSteDay`.
+
+## What is the average daily activity pattern?
+
+
+```{r}
+MeaInvDay<-aggregate(steps ~ interval, data, mean)
+plot(MeaInvDay$interval,MeaInvDay$steps,type="l",main="Average Number of steps per Interval",xlab="Interval", ylab="Number of Steps")
+MaxInt <- MeaInvDay[which.max(MeaInvDay$steps),1]
+```
+
+The 5-minute interval, on average across all the days in the data set, containing the maximum number of steps is `r MaxInt`.
+
+## Impute missing values. Compare imputed to non-imputed data.
+
+
+```{r}
+summary(data)
+NumMisData <- sum(is.na(data$steps))
+datan<-data    
+
+for(i in 1:nrow(datan))
+{
+  Val=datan[i,"interval"]
+  Num<-which(MeaInvDay[,"interval"]==Val)
+  if(is.na(datan[i,"steps"])){datan[i,"steps"]<-MeaInvDay[Num,"steps"]}
+}
+
+NumSteDayn <- aggregate(steps ~ date, datan, sum)
+hist(NumSteDayn$steps, main = "Daily Total Number of Steps (after Processing Misssing Values)", col="blue", xlab="Number of Steps")
+Mean_NumSteDayn<- mean(NumSteDayn$steps)
+Median_NumSteDayn <- median(NumSteDayn$steps)
+
+hist(NumSteDay$steps, main = paste("Total Steps Each Day"), col="red", xlab="Number of Steps", add=T)
+legend("topright", c("Imputed", "Non-imputed"), col=c("blue", "red"), lwd=10)
+
+MeaDiff <- Mean_NumSteDayn - Mean_NumSteDay
+MedDiff <- Median_NumSteDayn - Median_NumSteDay
+TotDif <- sum(NumSteDayn$steps) - sum(NumSteDay$steps)
+```
+
+* The imputed data mean is `r Mean_NumSteDayn`
+* The imputed data median is `r Median_NumSteDayn`
+* The difference between the non-imputed mean and imputed mean is `r MeaDiff`
+* The difference between the non-imputed mean and imputed mean is `r MedDiff`
+* The difference between total number of steps between imputed and non-imputed data is `r TotDif`. 
+
+
+## Are there differences in activity patterns between weekdays and weekends?
+``` {r}
+weekdays <- c("Monday", "Tuesday", "Wednesday", "Thursday", 
+              "Friday")
+datan$dow = as.factor(ifelse(is.element(weekdays(as.Date(datan$date)),weekdays), "Weekday", "Weekend"))
+NumSteIntn <- aggregate(steps ~ interval + dow, datan, mean)
+
+library(lattice)
+
+xyplot(NumSteIntn$steps ~ NumSteIntn$interval|NumSteIntn$dow, main="Average Steps per Day by Interval",xlab="Interval", ylab="Steps",layout=c(1,2), type="l")
+
+```
